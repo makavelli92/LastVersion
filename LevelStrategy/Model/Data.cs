@@ -18,7 +18,13 @@ namespace LevelStrategy.Model
         public virtual List<double> Volume { get; set; }
 
         public virtual int Count { get; set; }
+
         public virtual string ProcessType { get; set; } = "Accept";
-        
+
+        public virtual DateTime LastGet { get; set; }
+
+        public virtual List<Order> Orders { get; set; }
+
+        public virtual bool CheckOrder { get; set; }
     }
 }

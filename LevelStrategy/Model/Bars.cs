@@ -150,7 +150,9 @@ namespace LevelStrategy.Model
 
         public override List<DateTime> Time { get; set; }
 
-        public override int Count { get { return Close.Count(); } set { } }
+        public override DateTime LastGet { get; set; }
+
+        public override int Count { get { return Close.Count; } set { } }
 
         public List<double> MovingAverage { get; set; }
 
@@ -162,7 +164,7 @@ namespace LevelStrategy.Model
 
         public int periodStrategy = 200;
 
-        public double fractalPeriod = 9;
+        public double fractalPeriod = 21;
 
         public int sdvig = 3;
 
@@ -208,5 +210,19 @@ namespace LevelStrategy.Model
                 return ClassCod == "SPBFUT" ? "41104ES" : "L01-00000F00";
             }
         }
+
+        public override List<Order> Orders { get; set; }
+
+        public override bool CheckOrder => Orders.Count > 0 && Orders.Any(x => /*x.transactionId > 0 && x.StopProfitId > 0 &&*/ DateTime.Now - LastGet > new TimeSpan(0, 1, 0));
+
+        public DateTime LastCheckTable { get; set; }
+
+        public bool CheckTableTime => DateTime.Now - LastCheckTable > new TimeSpan(0, 2, 0);
+
+        public bool SendCheckTable = false;
+
+        public  string first = "first";
+
+        public  bool history = false;
     }
 }

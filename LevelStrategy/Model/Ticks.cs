@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using LevelStrategy.BL;
 
 namespace LevelStrategy.Model
 {
@@ -21,13 +22,17 @@ namespace LevelStrategy.Model
 
         public override List<double> Volume { get; set; }
 
-        public override int Count { get; set; }
+        public int CountTicks; 
+
+        public override int Count { get => Close.Count; set { } }
 
         public override string ProcessType { get; set; } = "Accept";
 
         public List<DateTime> timeToAction { get; set; }
 
-        public int SecondsCycle { get; set; } = 20;
+        public int SecondsCycle { get; set; } = 60;
+
+        public FindPattern worker;
 
         public void CalculateListMinuts()
         {
@@ -36,10 +41,10 @@ namespace LevelStrategy.Model
 
                 if (ClassCod == "TQBR")
                 {
-                    DateTime time = DateTime.Now.Date.AddHours(10);
+                    DateTime time = DateTime.Now.Date.AddHours(10).AddMinutes(1);
                     DateTime fine = DateTime.Now.Date.AddHours(18).AddMinutes(45);
 
-                    while (time.AddSeconds(SecondsCycle) <= fine)
+                    while (time <= fine)
                     {
                         timeToAction.Add(time.AddSeconds(SecondsCycle));
 
@@ -48,20 +53,20 @@ namespace LevelStrategy.Model
                 }
                 else if (ClassCod == "SPBFUT")
                 {
-                    DateTime time = DateTime.Now.Date.AddHours(10);
+                    DateTime time = DateTime.Now.Date.AddHours(10).AddMinutes(1);
                     DateTime fine = DateTime.Now.Date.AddHours(18).AddMinutes(45);
 
-                    while (time.AddSeconds(SecondsCycle) <= fine)
+                    while (time <= fine)
                     {
                         timeToAction.Add(time.AddSeconds(SecondsCycle));
 
                         time = time.AddSeconds(SecondsCycle);
                     }
 
-                    time = DateTime.Now.Date.AddHours(19);
+                    time = DateTime.Now.Date.AddHours(19).AddMinutes(1);
                     fine = DateTime.Now.Date.AddHours(23).AddMinutes(50);
 
-                    while (time.AddSeconds(SecondsCycle) <= fine)
+                    while (time <= fine)
                     {
                         timeToAction.Add(time.AddSeconds(SecondsCycle));
 

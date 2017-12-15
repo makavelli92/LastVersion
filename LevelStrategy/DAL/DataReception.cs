@@ -110,24 +110,38 @@ namespace LevelStrategy.DAL
             while (cycleWrite)
             {
 
-                if (timers.Any(x => x <= DateTime.Now))
+                if (timers.Any(x => x <= DateTime.Now) || listBars.Any(x => x.CheckOrder))
                 {
                     mtx.WaitOne();
                     currentTime = timers.FirstOrDefault(x => x <= DateTime.Now);
 
-                    if (currentTime != null)
+                    if (currentTime != null || listBars.Any(x => x.CheckOrder))
                     {
-                        Logger.Info($@"Формирую команды для запроса данных с TF - {currentTime} ...........текущее время  - " + DateTime.Now);
+                        int counter = 0;
+                        Logger.Info($@"Формирую команды для запроса данных с TF - {currentTime} текущее время  - " + DateTime.Now);
 
-                        foreach (Bars i in listBars.OfType<Bars>().Where(x => x.timeToAction.Contains(currentTime)))
+                        List<Bars> tempList = listBars.OfType<Bars>().Where(x => x.timeToAction.Contains(currentTime) || x.CheckOrder).ToList();
+                        foreach (Bars i in tempList)
                         {
                             if (i.ProcessType == "SendCommand" && i.Count > 0)
                             {
+                                counter++;
                                 i.ProcessType = "Accept";
                                 if (temp != String.Empty)
                                     temp += ';';
                                 temp += i.ClassCod + ';' + i.Name + ';' + i.TimeFrame + ';' + i.Count;
                             }
+                            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+                            //if (counter > 5)
+                            //{
+                            //    mtx.ReleaseMutex();
+
+                            //    SetQUIKCommandDataObject(SW_Command, SR_FlagCommand, SW_FlagCommand, temp, "GetCandle");
+                            //    temp = String.Empty;
+
+                            //    mtx.WaitOne();
+                            //}
+                            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
                         }
                         //foreach (Ticks i in listBars.OfType<Ticks>().Where(x => x.timeToAction.Contains(currentTime)))
                         //{
@@ -155,6 +169,50 @@ namespace LevelStrategy.DAL
 
                     timers.Remove(currentTime);
                 }
+
+                //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+                //else if(listBars.Any(x => x.CheckOrder))
+                //{
+                //    List<Bars> tmp = listBars.OfType<Bars>().Where(x => x.CheckOrder).ToList();
+                //    mtx.WaitOne();
+                //    bool can = false;
+                //    foreach (Bars i in tmp)
+                //    {
+                //        if (i.ProcessType == "SendCommand" && i.Count > 0)
+                //        {
+                //            i.ProcessType = "Accept";
+                //            if (temp != String.Empty)
+                //                temp += ';';
+                //            temp += i.ClassCod + ';' + i.Name + ';' + i.TimeFrame + ';' + i.Count;
+                //        }
+                //    }
+                //    if (temp != String.Empty)
+                //    {
+                //        mtx.ReleaseMutex();
+                //        can = true;
+                //        Task.Run(() =>
+                //         {
+                //        SetQUIKCommandDataObject(SW_Command, SR_FlagCommand, SW_FlagCommand, temp, "GetCandle");
+                //        temp = String.Empty;
+                //         });
+                //    }
+                //    if (!can)
+                //        mtx.ReleaseMutex();
+                //}
+                //if(listBars.OfType<Bars>().Any(x => x.CheckTableTime && x.SendCheckTable))
+                //{
+                //    string tmp = String.Empty;
+                //    mtx.WaitOne();
+                //    foreach (Bars i in listBars.OfType<Bars>().Where(x => x.CheckTableTime))
+                //    {
+                //        i.SendCheckTable = false;
+                //        mtx.ReleaseMutex();
+                //        SetQUIKCommandDataObject(SW_Command, SR_FlagCommand, SW_FlagCommand, String.Format($"{i.Name};{i.TimeFrame}"), "CheckTable");
+                //        mtx.WaitOne();
+                //    }
+                //    mtx.ReleaseMutex();
+                //}
+                //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
                 Thread.Sleep(1000);
             }
         }
@@ -210,7 +268,7 @@ namespace LevelStrategy.DAL
             SW_FlagCommand.BaseStream.Seek(0, SeekOrigin.Begin);
             SW_FlagCommand.Write("o");
             SW_FlagCommand.Flush();
-            
+
 
             // Цикл работает пока Run == true
             int m = 0;
@@ -224,7 +282,7 @@ namespace LevelStrategy.DAL
                         break;
                 }
                 while (flag == "o" || flag == "c");
-            
+
 
                 SR_Flag.BaseStream.Seek(0, SeekOrigin.Begin);
                 flag = SR_Flag.ReadToEnd().Trim('\0', '\r', '\n');
@@ -375,7 +433,7 @@ namespace LevelStrategy.DAL
             SW_Memory.Close();
             Memory.Dispose();
         }
-    
+
         public void CleanMemmory()
         {
             SW_Flag.BaseStream.Seek(0, SeekOrigin.Begin);
@@ -490,7 +548,7 @@ namespace LevelStrategy.DAL
             }
             to.Sort();
         }
-        public void SetQUIKCommandDataObject(StreamWriter SW_Command, StreamReader SR_FlagCommand, StreamWriter SW_FlagCommand, string Data = "", string commandType = "")
+        public void SetQUIKCommandDataObject(StreamWriter SW_Command, StreamReader SR_FlagCommand, StreamWriter SW_FlagCommand, string Data = "", string commandType = "", int fractalPeriod = 0, FindPattern patternParam = null)
         {
             Logger.Info("Отправляю команду " + Data);
             mtx.WaitOne();
@@ -499,7 +557,7 @@ namespace LevelStrategy.DAL
 
             if (Data != "")
             {
-                if(commandType == "GetCandle")
+                if (commandType == "GetCandle")
                 {
                     String[] substrings = Data.Split(';');
 
@@ -510,13 +568,15 @@ namespace LevelStrategy.DAL
                         {
                             if (substrings[i + 2] == "0")
                             {
-                                listBars.Add(new Ticks() { ClassCod = substrings[i], Name = substrings[i + 1], TimeFrame = Int32.Parse(substrings[i + 2]), Time = new List<DateTime>(), Close = new List<double>(), Volume = new List<double>() });
+                                listBars.Add(new Ticks() { ClassCod = substrings[i], Name = substrings[i + 1], TimeFrame = Int32.Parse(substrings[i + 2]), Time = new List<DateTime>(), Close = new List<double>(), Volume = new List<double>(), worker = patternParam });
                                 listBars.OfType<Ticks>().Last().CalculateListMinuts();
                                 AddToTimer(listBars.OfType<Ticks>().Last().timeToAction, this.timers);
                             }
                             else
                             {
-                                listBars.Add(new Bars() { ClassCod = substrings[i], Name = substrings[i + 1], TimeFrame = Int32.Parse(substrings[i + 2]), Time = new List<DateTime>(), Open = new List<double>(), High = new List<double>(), Low = new List<double>(), Close = new List<double>(), Volume = new List<double>(), listSignal = new List<SignalData>() });
+                                listBars.Add(new Bars() { ClassCod = substrings[i], Name = substrings[i + 1], TimeFrame = Int32.Parse(substrings[i + 2]), Time = new List<DateTime>(), Open = new List<double>(), High = new List<double>(), Low = new List<double>(), Close = new List<double>(), Volume = new List<double>(), listSignal = new List<SignalData>(), Orders = new List<Order>() });
+                                if (fractalPeriod != 0)
+                                    listBars.OfType<Bars>().Last().fractalPeriod = fractalPeriod;
                                 MainForm.grid.Invoke(new Action(() =>
                                 {
                                     MainForm.grid.Rows.Add(listBars.Last().Name + " " + listBars.Last().TimeFrame);
@@ -525,17 +585,17 @@ namespace LevelStrategy.DAL
                                 }));
                                 listBars.OfType<Bars>().Last().CalculateListMinuts();
                                 AddToTimer(listBars.OfType<Bars>().Last().timeToAction, this.timers);
-                                if (listBars.OfType<Bars>().Last().ClassCod == "TQBR")
-                                {
-                                    listBars.OfType<Bars>().Last().fractalPeriod = 15;
-                                }
+                                //if (listBars.OfType<Bars>().Last().ClassCod == "TQBR")
+                                //{
+                                //    listBars.OfType<Bars>().Last().fractalPeriod = 15;
+                                //}
                             }
                         }
                     }
                 }
-                
+
                 Data = String.Format($"{commandType};{Data}");
-                if(Data.Length > 512)
+                if (Data.Length > 512)
                 {
                     Logger.Fatal("Превышен лимит данных на запись в MMF - попытка записи: {0}", Data.Length);
                 }
@@ -639,7 +699,7 @@ namespace LevelStrategy.DAL
         GZZ7,
         SRZ7,
         EuZ7,
-        GDZ7,
+        GDH8,
         RIZ7,
         SiZ7,
         BRF8

@@ -28,13 +28,13 @@ namespace LevelStrategy.BL
                 bars.listSignal.Add(new SignalData("Short - Зеркальный уровень", new char[] { 'l', 'h', 'h' }, bars.Time[bsy], bars.Time[(bar - 1)], bars.Time[bar], bars.Low[bsy], Math.Round(bars.Low[bsy] * 0.9996, bars.CountSigns), Math.Round(((bars.Low[bsy] * 0.9996) * 0.996), bars.CountSigns), DateTime.Now, bars.Name + " " + bars.TimeFrame));
                 eventHandler(new object(), bars.listSignal.Last());
             }
-            if (AirLevel(bar, bars, out bsy) == "Short")//&& DefenitionAreaNearLevel(bar) == "Nothing" && shortTrade)
-            {
-                bars.listSignal.Add(new SignalData("Short - Воздушный уровень", new char[] { 'h', 'h', 'h' }, bars.Time[bsy], bars.Time[(bar - 1)], bars.Time[bar], bars.High[bsy], Math.Round(bars.High[bsy] * 0.9996, bars.CountSigns), Math.Round(((bars.High[bsy] * 0.9996) * 0.996), bars.CountSigns), DateTime.Now, bars.Name + " " + bars.TimeFrame));
-                ChangeColorConsole(true);
-                eventHandler(new object(), bars.listSignal.Last());
-                ChangeColorConsole(false);
-            }
+            //if (AirLevel(bar, bars, out bsy) == "Short")//&& DefenitionAreaNearLevel(bar) == "Nothing" && shortTrade)
+            //{
+            //    bars.listSignal.Add(new SignalData("Short - Воздушный уровень", new char[] { 'h', 'h', 'h' }, bars.Time[bsy], bars.Time[(bar - 1)], bars.Time[bar], bars.High[bsy], Math.Round(bars.High[bsy] * 0.9996, bars.CountSigns), Math.Round(((bars.High[bsy] * 0.9996) * 0.996), bars.CountSigns), DateTime.Now, bars.Name + " " + bars.TimeFrame));
+            //    ChangeColorConsole(true);
+            //    eventHandler(new object(), bars.listSignal.Last());
+            //    ChangeColorConsole(false);
+            //}
             if (FindModelRepeatLevel(bar, bars.indexFractalHigh, bars.indexFractalsLow, bars, out bsy) == "Long")   // && DefenitionAreaNearLevel(bar) == "Long"   && longTrade)
             {
                 bars.listSignal.Add(new SignalData("Long - Повторяющийся уровень", new char[] { 'l', 'l', 'l' }, bars.Time[bsy],  bars.Time[(bar - 1)], bars.Time[bar], bars.Low[bsy], Math.Round(bars.Low[bsy] * 1.0004, bars.CountSigns), Math.Round(((bars.Low[bsy] * 1.0004) * 1.004), bars.CountSigns), DateTime.Now, bars.Name + " " + bars.TimeFrame));
@@ -45,13 +45,13 @@ namespace LevelStrategy.BL
                 bars.listSignal.Add(new SignalData("Long - Зеркальный уровень", new char[] { 'h', 'l', 'l' }, bars.Time[bsy],  bars.Time[(bar - 1)], bars.Time[bar], bars.High[bsy], Math.Round(bars.High[bsy] * 1.0004, bars.CountSigns), Math.Round(((bars.High[bsy] * 1.0004) * 1.004), bars.CountSigns), DateTime.Now, bars.Name + " " + bars.TimeFrame));
                 eventHandler(new object(), bars.listSignal.Last());
             }
-            if (AirLevel(bar, bars, out bsy) == "Long")// && DefenitionAreaNearLevel(bar) == "Nothing" && longTrade)
-            {
-                bars.listSignal.Add(new SignalData("Long - Воздушный уровень", new char[] { 'l', 'l', 'l' },  bars.Time[bsy],  bars.Time[(bar - 1)],  bars.Time[bar], bars.Low[bsy], Math.Round(bars.Low[bsy] * 1.0004, bars.CountSigns), Math.Round(((bars.Low[bsy] * 1.0004) * 1.004), bars.CountSigns), DateTime.Now, bars.Name + " " + bars.TimeFrame));
-                ChangeColorConsole(true);
-                eventHandler(new object(), bars.listSignal.Last());
-                ChangeColorConsole(false);
-            }
+            //if (AirLevel(bar, bars, out bsy) == "Long")// && DefenitionAreaNearLevel(bar) == "Nothing" && longTrade)
+            //{
+            //    bars.listSignal.Add(new SignalData("Long - Воздушный уровень", new char[] { 'l', 'l', 'l' },  bars.Time[bsy],  bars.Time[(bar - 1)],  bars.Time[bar], bars.Low[bsy], Math.Round(bars.Low[bsy] * 1.0004, bars.CountSigns), Math.Round(((bars.Low[bsy] * 1.0004) * 1.004), bars.CountSigns), DateTime.Now, bars.Name + " " + bars.TimeFrame));
+            //    ChangeColorConsole(true);
+            //    eventHandler(new object(), bars.listSignal.Last());
+            //    ChangeColorConsole(false);
+            //}
         }
 
         public static void ChangeColorConsole(bool change, ConsoleColor color = ConsoleColor.Red)

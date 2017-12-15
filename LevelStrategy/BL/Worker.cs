@@ -78,6 +78,7 @@ namespace LevelStrategy.BL
 
         public static void EventSignal(object e, SignalData data)
         {
+            Logger.Debug($@"Сигнал получен для {data.NameSecurity}, время - " + DateTime.Now);
             int temp;
             if (MainForm.grid.InvokeRequired)
             {// перезаходим в метод потоком формы, чтобы не было исключения
@@ -95,11 +96,12 @@ namespace LevelStrategy.BL
                     MainForm.grid.Rows[temp].Cells[7].Value = data.CancelSignal;
                     MainForm.grid.Rows[temp].Cells[8].Value = data.TimeNow.ToShortTimeString();
                     MainForm.grid.Rows[temp].DefaultCellStyle.BackColor = Color.Cyan;
+
+                    ChangeColorCells(MainForm.grid.Rows);
                 }));
                 return;
             }
-            Logger.Debug($@"Сигнал получен для {data.NameSecurity}, время - " + DateTime.Now);
-
+            
             temp = GetRowNumber(MainForm.grid.Rows, data.NameSecurity);
 
             MainForm.grid.Rows[temp].Cells[1].Value = data.SignalType;
@@ -111,6 +113,19 @@ namespace LevelStrategy.BL
             MainForm.grid.Rows[temp].Cells[7].Value = data.CancelSignal;
             MainForm.grid.Rows[temp].Cells[8].Value = data.TimeNow.ToShortTimeString();
             MainForm.grid.Rows[temp].DefaultCellStyle.BackColor = Color.Cyan;
+
+            ChangeColorCells(MainForm.grid.Rows);
+        }
+
+        private static void ChangeColorCells(DataGridViewRowCollection rowsCollection)
+        {
+            foreach (DataGridViewRow i in rowsCollection)
+            {
+                if (i.Cells[8].Value != null && i.DefaultCellStyle.BackColor == Color.Cyan && (DateTime.Parse(DateTime.Now.ToShortTimeString()) - DateTime.Parse(i.Cells[8].Value.ToString())).TotalMinutes > 5)
+                {
+                    i.DefaultCellStyle.BackColor = Color.Gold;
+                }
+            }
         }
 
         public static void DeleteLastData(Bars bars)

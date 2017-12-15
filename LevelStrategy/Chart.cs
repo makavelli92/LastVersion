@@ -16,10 +16,13 @@ namespace LevelStrategy
     public partial class Chart : Form
     {
         private SignalData signal;
-        private Candle[] CandleArray; // это массив свечек
+        private List<Candle> CandleArray; // это массив свечек
         private double stepPrice;
         private Bars bars;
         private DataReception data;
+        private DateTime timeLastData;
+        private List<double> drawLine;
+        private static readonly Mutex mtx = new Mutex();
 
         public Chart(Bars bars, SignalData signal, DataReception data)
         {
@@ -31,7 +34,7 @@ namespace LevelStrategy
             label2.Text = String.Empty;
             label3.Text = String.Empty;
             label4.Text = String.Empty;
-
+            timeLastData = bars.LastGet;
             this.signal = signal;
 
             CreateChart();
@@ -43,7 +46,87 @@ namespace LevelStrategy
             stepPrice = bars.StepPrice;
             CalculatePesent();
             ChartResize();
-            this.Text = signal.SignalType;
+            this.Text = String.Format($"{bars.Name}_{bars.TimeFrame} - {signal.SignalType} || Люфт - {signal.CancelSignal}");
+            textBox2.Text = "1";
+            textBox3.Text = GetOneLotPrice(bars.Name).ToString();
+        }
+
+        private double GetOneLotPrice(string security)
+        {
+            int countLot = 0;
+            if(textBox2.Text != String.Empty)
+            {
+                countLot = Int32.Parse(textBox2.Text);
+            }
+            if (security.Substring(0, 2) == "GZ" && security.Substring(0, 2) == "SR" && security.Substring(0, 2) == "Eu" && security.Substring(0, 2) == "GD" && security.Substring(0, 2) == "RI" && security.Substring(0, 2) == "Si" && security.Substring(0, 2) == "BR")
+                security = security.Substring(0, 2);
+            switch (security)
+            {
+                case "SBER":
+                    return signal.Level * 10 * countLot;
+                case "MOEX":
+                    return signal.Level * 10 * countLot;
+                case "ROSN":
+                    return signal.Level * 10 * countLot;
+                case "NLMK":
+                    return signal.Level * 10 * countLot;
+                case "LKOH":
+                    return signal.Level * 1 * countLot;
+                case "GAZP":
+                    return signal.Level * 10 * countLot;
+                case "URKA":
+                    return signal.Level * 10 * countLot;
+                case "CHMF":
+                    return signal.Level * 10 * countLot;
+                case "VTBR":
+                    return signal.Level * 10000 * countLot;
+                case "MAGN":
+                    return signal.Level * 100 * countLot;
+                case "MGNT":
+                    return signal.Level * 1 * countLot;
+                case "NVTK":
+                    return signal.Level * 10 * countLot;
+                case "SBERP":
+                    return signal.Level * 100 * countLot;
+                case "GMKN":
+                    return signal.Level * 1 * countLot;
+                case "ALRS":
+                    return signal.Level * 100 * countLot;
+                case "MTSS":
+                    return signal.Level * 10 * countLot;
+                case "PHOR":
+                    return signal.Level * 1 * countLot;
+                case "AFLT":
+                    return signal.Level * 100 * countLot;
+                case "YNDX":
+                    return signal.Level * 1 * countLot;
+                case "MTLRP":
+                    return signal.Level * 10 * countLot;
+                case "SNGS":
+                    return signal.Level * 100 * countLot;
+                case "FEES":
+                    return signal.Level * 10000 * countLot;
+                case "RTKM":
+                    return signal.Level * 10 * countLot;
+                case "RASP":
+                    return signal.Level * 10 * countLot;
+                case "GZ":
+                    return signal.Level * 100 * countLot;
+                case "SR":
+                    return signal.Level * 100 * countLot;
+                case "Eu":
+                    return signal.Level * 1000 * countLot; ;
+                case "GD":
+                    return signal.Level * 1 * countLot;
+                case "RI":
+                    return signal.Level * 1 * countLot;
+                case "Si":
+                    return signal.Level * 1000 * countLot;
+                case "BR":
+                    return signal.Level * 10 * countLot;
+                default:
+                    return 0;
+            }
         }
 
         private void PaintData(SignalData signal)
@@ -72,14 +155,27 @@ namespace LevelStrategy
 
         private void button3_Click(object sender, EventArgs e)
         {
+            button3.Enabled = false;
             SetCommandOrder();
+            button3.Enabled = true;
         }
 
         private void SetCommandOrder()
         {
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+            mtx.WaitOne();
+            bars.Orders.Add(new Order(bars.ClassCod, bars.Name, Double.Parse(textBox1.Text), signal.SignalType[0] == 'S' ? "S" : "B", Int32.Parse(textBox2.Text), signal.CancelSignal));
+
+            mtx.ReleaseMutex();
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
             data.SetQUIKCommandDataObject(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, CreateOrderString(bars, signal), "SetOrder");
             //  data.SetQUIKCommandDataObject(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, CreateStopLossOrderString(bars, signal), "Set_SL");
             data.SetQUIKCommandDataObject(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, CreateTakeProfitStopLossString(bars, signal), "SetTP_SL");
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+            //while (!bars.Orders.Any(x => x.transactionId > 0 && x.StopProfitId > 0))
+            //    Thread.Sleep(1000);
+            //data.SetQUIKCommandDataObject(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, String.Format($"{bars.Name};{bars.TimeFrame}"), "CheckTable");
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
         }
 
         private string CreateStopLossOrderString(Bars bars, SignalData signal)
@@ -90,7 +186,7 @@ namespace LevelStrategy
             builder.Append(bars.Name).Append(';');
             builder.Append(signal.SignalType[0] == 'S' ? "B" : "S").Append(';');
             builder.Append(signal.SignalType[0] == 'S' ? listLevelST[0] : listLevelST[3]).Append(';');
-            builder.Append("1");
+            builder.Append(textBox2.Text);
             return builder.ToString();
         }
         
@@ -105,7 +201,7 @@ namespace LevelStrategy
             builder.Append(bars.Name).Append(';');
             builder.Append(signal.SignalType[0] == 'S' ? "B" : "S").Append(';');
             builder.Append(textBox1.Text).Append(';');
-            builder.Append("1").Append(';');
+            builder.Append(textBox2.Text).Append(';');
             builder.Append(profit_size).Append(';');
             builder.Append(stop_size);
             return builder.ToString();
@@ -119,7 +215,7 @@ namespace LevelStrategy
             builder.Append(bars.Name).Append(';');
             builder.Append(textBox1.Text).Append(';');
             builder.Append(signal.SignalType[0] == 'S'?"S":"B").Append(';');
-            builder.Append("1");
+            builder.Append(textBox2.Text);
             return builder.ToString();
         }
 
@@ -168,6 +264,36 @@ namespace LevelStrategy
                 chartForCandle.Series.FindByName("SeriesCandleLineLevel").ChartArea = "ChartAreaCandle";
                 chartForCandle.Series.FindByName("SeriesCandleLineLevel").Color = Color.Blue;
                 chartForCandle.Series.FindByName("SeriesCandleLineLevel").BorderWidth = 1;
+
+                chartForCandle.Series.Add("SeriesCandleLineStop");
+                // назначаем этой коллекции тип "Line"
+                chartForCandle.Series.FindByName("SeriesCandleLineStop").ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.FastLine;
+                // назначаем ей правую линейку по шкале Y (просто для красоты) Везде ж так
+                chartForCandle.Series.FindByName("SeriesCandleLineStop").YAxisType = System.Windows.Forms.DataVisualization.Charting.AxisType.Secondary;
+                // помещаем нашу коллекцию на ранее созданную область
+                chartForCandle.Series.FindByName("SeriesCandleLineStop").ChartArea = "ChartAreaCandle";
+                chartForCandle.Series.FindByName("SeriesCandleLineStop").Color = Color.Red;
+                chartForCandle.Series.FindByName("SeriesCandleLineStop").BorderWidth = 1;
+
+                chartForCandle.Series.Add("SeriesCandleLineTake");
+                // назначаем этой коллекции тип "Line"
+                chartForCandle.Series.FindByName("SeriesCandleLineTake").ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.FastLine;
+                // назначаем ей правую линейку по шкале Y (просто для красоты) Везде ж так
+                chartForCandle.Series.FindByName("SeriesCandleLineTake").YAxisType = System.Windows.Forms.DataVisualization.Charting.AxisType.Secondary;
+                // помещаем нашу коллекцию на ранее созданную область
+                chartForCandle.Series.FindByName("SeriesCandleLineTake").ChartArea = "ChartAreaCandle";
+                chartForCandle.Series.FindByName("SeriesCandleLineTake").Color = Color.Lime;
+                chartForCandle.Series.FindByName("SeriesCandleLineTake").BorderWidth = 1;
+
+                chartForCandle.Series.Add("SeriesCandleLineLyftCancel");
+                // назначаем этой коллекции тип "Line"
+                chartForCandle.Series.FindByName("SeriesCandleLineLyftCancel").ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.FastLine;
+                // назначаем ей правую линейку по шкале Y (просто для красоты) Везде ж так
+                chartForCandle.Series.FindByName("SeriesCandleLineLyftCancel").YAxisType = System.Windows.Forms.DataVisualization.Charting.AxisType.Secondary;
+                // помещаем нашу коллекцию на ранее созданную область
+                chartForCandle.Series.FindByName("SeriesCandleLineLyftCancel").ChartArea = "ChartAreaCandle";
+                chartForCandle.Series.FindByName("SeriesCandleLineLyftCancel").Color = Color.Magenta;
+                chartForCandle.Series.FindByName("SeriesCandleLineLyftCancel").BorderWidth = 1;
             }
 
             for (int i = 0; i < chartForCandle.ChartAreas.Count; i++)
@@ -190,13 +316,13 @@ namespace LevelStrategy
 
         private void LoadCandleFromFile(Bars bars) // загрузить свечки из файла
         {
-            Candle[] newCandleArray;
+            List<Candle> newCandleArray;
             if (bars.Count > 0)
             {
-                newCandleArray = new Candle[bars.Count];
+                newCandleArray = new List<Candle>();
                 for (int i = 0; i < bars.Count; i++)
                 {
-                    newCandleArray[i] = new Candle() { close = bars.Close[i], high = bars.High[i], low = bars.Low[i], open = bars.Open[i], volume = bars.Volume[i], time = bars.Time[i] };
+                    newCandleArray.Add(new Candle() { close = bars.Close[i], high = bars.High[i], low = bars.Low[i], open = bars.Open[i], volume = bars.Volume[i], time = bars.Time[i] });
                 }
                 CandleArray = newCandleArray;
             }
@@ -239,11 +365,11 @@ namespace LevelStrategy
 
         }
 
-        private void LoadCandleOnChart(SignalData signal) // прогрузить загруженные свечки на график
+        private void LoadCandleOnChart(SignalData signal, int startPos = 0) // прогрузить загруженные свечки на график
         {
             if (chartForCandle.InvokeRequired)
             {// перезаходим в метод потоком формы, чтобы не было исключения
-                Invoke(new Action<SignalData>(LoadCandleOnChart), signal);
+                Invoke(new Action<SignalData, int>(LoadCandleOnChart), signal, startPos);
                 return;
             }
             if (CandleArray == null)
@@ -252,14 +378,22 @@ namespace LevelStrategy
             }
             chartForCandle.Visible = false;
             
-          //  MessageBox.Show("111");
-            for (int i = 0; i < CandleArray.Length; i++)
-            {// отправляем наш массив по свечкам на прорисовку
-                LoadNewCandle(CandleArray[i], i);
+            if (startPos == 0)
+            {
+                for (int i = 0; i < CandleArray.Count; i++)
+                {// отправляем наш массив по свечкам на прорисовку
+                    LoadNewCandle(CandleArray[i], i);
+                }
+
+                DrawLine(signal);
             }
-
-            DrawLine(signal);
-
+            else
+            {
+                for (int i = startPos - 1; i < CandleArray.Count; i++)
+                {// отправляем наш массив по свечкам на прорисовку
+                    LoadNewCandle(CandleArray[i], i);
+                }
+            }
             ChartResize();
 
             if (chartForCandle.InvokeRequired)
@@ -269,39 +403,64 @@ namespace LevelStrategy
             }
             else
                 chartForCandle.Visible = true;
-
         }
 
-        private void DrawLineStopAndTakeProfit(List<double> listLevel)
+        private void DrawLineStopAndTakeProfit(List<double> listLevel, bool second = false)
         {
-            chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(0, signal.Level);
-            for (int i = 0; i < listLevel.Count; i++)
+            for (int i = 2; i < 6; i++)
             {
-                chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(0, listLevel[i]);
-                chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(CandleArray.Length - 1, listLevel[i]);
-                chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(0, listLevel[i]);
+                if (!second)
+                {
+                    chartForCandle.Series[i].Points.AddXY(0, listLevel[i - 2]);
+                    chartForCandle.Series[i].Points.AddXY(CandleArray.Count, listLevel[i - 2]);
+                }
+                else
+                    chartForCandle.Series[i].Points.AddXY(CandleArray.Count, listLevel[i - 2]);
             }
         }
 
+        //private void DrawLineStopAndTakeProfit(List<double> listLevel)
+        //{
+        //    chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(0, signal.Level);
+        //    for (int i = 0; i < listLevel.Count; i++)
+        //    {
+        //        chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(0, listLevel[i]);
+        //        chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(CandleArray.Count - 1, listLevel[i]);
+        //        chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(0, listLevel[i]);
+        //    }
+        //}
+
         private void DrawLine(SignalData signal)
         {
-            int candleBsy = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time == signal.DateBsy));
-            int candleBpy1 = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time == signal.DateBpy1));
-            int candleBpy2 = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time == signal.DateBpy2));
+            int candleBsy;
+            int candleBpy1;
+            int candleBpy2;
+            if (!hourTimeFrame)
+            {
+                candleBsy = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time == signal.DateBsy));
+                candleBpy1 = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time == signal.DateBpy1));
+                candleBpy2 = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time == signal.DateBpy2));
+            }
+            else
+            {
+                candleBsy = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time.Date == signal.DateBsy.Date));
+                candleBpy1 = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time.Date == signal.DateBpy1.Date));
+                candleBpy2 = CandleArray.ToList().IndexOf(CandleArray.First(x => x.time.Date == signal.DateBpy2.Date));
+            }
 
+                chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy2, CandleArray[candleBpy2].high);
+                chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy2, CandleArray[candleBpy2].high + CandleArray[candleBpy2].high / 100);
+
+
+                chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy1, CandleArray[candleBpy1].high);
+                chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy2, CandleArray[candleBpy2].high + CandleArray[candleBpy2].high / 100);
+
+                chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBsy, CandleArray[candleBsy].high);
+                chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy2, CandleArray[candleBpy2].high + CandleArray[candleBpy2].high / 100);
+
+                chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(0, signal.Level);
+                chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(CandleArray.Count - 1, signal.Level);
             
-            chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy2, CandleArray[candleBpy2].high);
-            chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy2, CandleArray[candleBpy2].high + CandleArray[candleBpy2].high / 100);
-
-
-            chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy1, CandleArray[candleBpy1].high);
-            chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy2, CandleArray[candleBpy2].high + CandleArray[candleBpy2].high / 100);
-
-            chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBsy, CandleArray[candleBsy].high);
-            chartForCandle.Series.FindByName("SeriesCandleLine").Points.AddXY(candleBpy2, CandleArray[candleBpy2].high + CandleArray[candleBpy2].high / 100);
-
-            chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(0, signal.Level);
-            chartForCandle.Series.FindByName("SeriesCandleLineLevel").Points.AddXY(CandleArray.Length - 1, signal.Level);
         }
 
         private void LoadNewCandle(Candle newCandle, int numberInArray) // добавить одну свечу на график
@@ -335,7 +494,7 @@ namespace LevelStrategy
             }
             catch
             {// перезаходим в метод потоком формы, чтобы не было исключения
-                MessageBox.Show("Paint");
+              //  MessageBox.Show("Paint");
                 Invoke(new Action<Candle, int>(LoadNewCandle), newCandle, numberInArray);
                 return;
             }
@@ -381,11 +540,11 @@ namespace LevelStrategy
             }
         }
 
-        private double GetMinValueOnChart(Candle[] Book, int start, int end) // берёт минимальное значение из массива свечек
+        private double GetMinValueOnChart(List<Candle> Book, int start, int end) // берёт минимальное значение из массива свечек
         {
             double result = double.MaxValue;
 
-            for (int i = start; i < end && i < Book.Length; i++)
+            for (int i = start; i < end && i < Book.Count; i++)
             {
                 if (Book[i].low < result)
                 {
@@ -396,11 +555,11 @@ namespace LevelStrategy
             return result;
         }
 
-        private double GetMaxValueOnChart(Candle[] Book, int start, int end) // берёт максимальное значение из массива свечек
+        private double GetMaxValueOnChart(List<Candle> Book, int start, int end) // берёт максимальное значение из массива свечек
         {
             double result = 0;
 
-            for (int i = start; i < end && i < Book.Length; i++)
+            for (int i = start; i < end && i < Book.Count; i++)
             {
                 if (Book[i].high > result)
                 {
@@ -484,16 +643,208 @@ namespace LevelStrategy
                 countSigns = CalculateSignsCount(stepPrice.ToString());
             }
 
-            label1.Text = String.Format("TP 0.6 - {0}", Math.Round((temp / 100 * 0.6 + temp), countSigns).ToString());
-            label2.Text = String.Format("ST 0.2 - {0}", Math.Round((temp / 100 * 0.2 + temp), countSigns).ToString());
-            label3.Text = String.Format("ST -0.2 - {0}", Math.Round((temp - temp / 100 * 0.2), countSigns).ToString());
-            label4.Text = String.Format("TP -0.6 - {0}", Math.Round((temp - temp / 100 * 0.6), countSigns).ToString());
+            label1.Text = String.Format("TP 1.2 - {0}", Math.Round((temp / 100 * 1.2 + temp), countSigns).ToString());
+            label2.Text = String.Format("ST 0.4 - {0}", Math.Round((temp / 100 * 0.4 + temp), countSigns).ToString());
+            label3.Text = String.Format("ST -0.4 - {0}", Math.Round((temp - temp / 100 * 0.4), countSigns).ToString());
+            label4.Text = String.Format("TP -1.2 - {0}", Math.Round((temp - temp / 100 * 1.2), countSigns).ToString());
             listLevelST = new List<double>()
             {
-                Math.Round((temp / 100 * 0.6 + temp), countSigns),  Math.Round((temp / 100 * 0.2 + temp), countSigns),
-                Math.Round((temp - temp / 100 * 0.2), countSigns), Math.Round((temp - temp / 100 * 0.6), countSigns)
+                Math.Round((temp / 100 * 1.2 + temp), countSigns),  Math.Round((temp / 100 * 0.4 + temp), countSigns),
+                Math.Round((temp - temp / 100 * 0.4), countSigns), Math.Round((temp - temp / 100 * 1.2), countSigns)
             };
-            DrawLineStopAndTakeProfit(listLevelST);
+            drawLine = GetLewelForPaint(signal, listLevelST);
+            DrawLineStopAndTakeProfit(drawLine);
+        }
+
+        private List<double> GetLewelForPaint(SignalData signal, List<double> allLevel)
+        {
+            List<double> temp = new List<double>();
+            temp.Add(signal.Level);
+            temp.Add(signal.SignalType[0] == 'S'?allLevel[1]:allLevel[2]);
+            temp.Add(signal.SignalType[0] == 'S' ? allLevel[3] : allLevel[0]);
+            temp.Add(signal.CancelSignal);
+            return temp;
+        }
+
+        private void button1_Click_1(object sender, EventArgs e)
+        {
+            if (button1.InvokeRequired)
+            {// перезаходим в метод потоком формы, чтобы не было исключения
+                Invoke(new Action(() => { button1.Enabled = false; ; }));
+            }
+            else
+                button1.Enabled = false;
+
+            data.SetQUIKCommandDataObject(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, bars.ClassCod + ';' + bars.Name + ';' + bars.TimeFrame + ';' + bars.Count, "GetCandle");
+            Task.Run(() => { AddLastCandle(); });
+        }
+
+        private void AddLastCandle()
+        {
+            while (timeLastData == bars.LastGet)
+            {
+                Thread.Sleep(100);
+            }
+            timeLastData = bars.LastGet;
+            if (chartForCandle.InvokeRequired)
+            {// перезаходим в метод потоком формы, чтобы не было исключения
+                Invoke(new Action(() =>
+                {
+                    chartForCandle.Visible = false;
+
+                    chartForCandle.Series.FindByName("SeriesCandle").Points.RemoveAt(chartForCandle.Series.FindByName("SeriesCandle").Points.Count - 1);
+
+                    chartForCandle.Series.FindByName("SeriesCandle").Points.RemoveAt(chartForCandle.Series.FindByName("SeriesCandle").Points.Count - 1);
+
+                    CandleArray.RemoveAt(CandleArray.Count - 1);
+
+                }));
+            }
+            else
+            {
+                chartForCandle.Visible = false;
+                chartForCandle.Series.FindByName("SeriesCandle").Points.RemoveAt(chartForCandle.Series.FindByName("SeriesCandle").Points.Count - 1);
+                chartForCandle.Series.FindByName("SeriesCandle").Points.RemoveAt(chartForCandle.Series.FindByName("SeriesCandle").Points.Count - 1);
+                CandleArray.RemoveAt(CandleArray.Count - 1);
+            }
+            
+
+            int startPos = CandleArray.Count;
+
+            for (int i = CandleArray.Count; i < bars.Count; i++)
+            {
+                CandleArray.Add(new Candle() { close = bars.Close[i], high = bars.High[i], low = bars.Low[i], open = bars.Open[i], volume = bars.Volume[i], time = bars.Time[i] });
+            }
+
+
+            LoadCandleOnChart(this.signal, startPos);
+            if (chartForCandle.InvokeRequired)
+            {// перезаходим в метод потоком формы, чтобы не было исключения
+                Invoke(new Action(() =>
+                {
+                    //   chartForCandle.Series.Clear();
+                    //   chartForCandle.ChartAreas.Clear();
+                    chartForCandle.Refresh();
+                    DrawLineStopAndTakeProfit(drawLine, true);
+                    chartForCandle.ChartAreas[0].AxisX.ScaleView.Scroll(chartForCandle.ChartAreas[0].AxisX.Maximum);
+                    button1.Enabled = true;
+                }));
+            }
+            else
+            {
+                //   chartForCandle.Series.Clear();
+                //    chartForCandle.ChartAreas.Clear();
+                chartForCandle.Refresh();
+                DrawLineStopAndTakeProfit(drawLine, true);
+                chartForCandle.ChartAreas[0].AxisX.ScaleView.Scroll(chartForCandle.ChartAreas[0].AxisX.Maximum);
+                button1.Enabled = true;
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            mtx.WaitOne();
+            int counter = 0;
+            List<Order> listOrders = new List<Order>();
+            foreach (Order i in bars.Orders)
+            {
+                counter++;
+                DialogResult temp = MessageBox.Show($"Удалить ордер {counter} : {i.classCode} {i.security} операция - {i.operation} кол-во - {i.quantity} по цене {i.price}","Удаление ордеров из проверки", MessageBoxButtons.YesNoCancel,MessageBoxIcon.Question);
+                if (temp == DialogResult.Yes)
+                {
+                    listOrders.Add(i);
+                }
+                else if (temp == DialogResult.Cancel)
+                    break;
+            }
+            listOrders.ForEach(x => bars.Orders.Remove(x));
+            
+          //  bars.Orders.RemoveRange(0, bars.Orders.Count);
+            mtx.ReleaseMutex();
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+            //if(bars.Orders.Count > 0)
+            //{
+            //    Order order = bars.Orders.FirstOrDefault(x => x.transactionId > 0 && x.StopProfitId > 0 && x.numberOrder > 0 && x.numberStopProfitOrder > 0);
+            //    if (order != null)
+            //    {
+            //        DataReception.SetQUIKCommandData(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, bars.ClassCod + ';' + bars.Name + ';' + order.numberOrder + ';' + bars.Account, "KillOrder");
+            //        DataReception.SetQUIKCommandData(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, bars.ClassCod + ';' + bars.Name + ';' + order.numberStopProfitOrder + ';' + bars.Account, "KillStopOrder");
+            //        bars.Orders.RemoveAll(x => x.transactionId == order.transactionId && x.StopProfitId == order.StopProfitId);
+            //    }
+            //    else
+            //        MessageBox.Show("Не определны номера ордеров!");
+            //}
+            //%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%//
+        }
+
+        private void textBox2_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(e.KeyChar.ToString(), @"[0-9]") && e.KeyChar != 8)
+                e.Handled = true;
+        }
+
+        private bool hourTimeFrame = false;
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            chartForCandle.ChartAreas.FindByName("ChartAreaCandle").AxisX.ScaleView.ZoomReset();
+            for (int i = 0; i < 6; i++)
+            {
+                chartForCandle.Series[i].Points.Clear();
+            }
+            if (!hourTimeFrame)
+            {
+                List<Candle> candleList = new List<Candle>();
+                Candle temp = new Candle();
+                DateTime start = CandleArray[0].time;
+                temp.time = CandleArray[0].time;
+                temp.open = CandleArray[0].open;
+                temp.high = CandleArray[0].high;
+                temp.low = CandleArray[0].low;
+                foreach (Candle i in CandleArray)
+                {
+                    if (i.time.Date > start.Date)
+                    {
+                        start = i.time;
+                        candleList.Add(temp);
+                        temp = new Candle();
+                        temp.time = start;
+                        temp.open = i.open;
+                        temp.high = i.high;
+                        temp.low = i.low;
+                        temp.close = i.close;
+                    }
+                    else if (i.time.Date == start.Date)
+                    {
+                        temp.close = i.close;
+                        if (i.high > temp.high)
+                            temp.high = i.high;
+                        if (i.low < temp.low)
+                            temp.low = i.low;
+                    }
+                }
+                candleList.Add(temp);
+                CandleArray = candleList;
+                PaintData(signal);
+                DrawLineStopAndTakeProfit(drawLine);
+                chartForCandle.ChartAreas[0].AxisX.ScaleView.Scroll(chartForCandle.ChartAreas[0].AxisX.Minimum);
+                hourTimeFrame = true;
+                button1.Enabled = false;
+            }
+            else
+            {
+                LoadCandleFromFile(bars);
+                PaintData(signal);
+                DrawLineStopAndTakeProfit(drawLine);
+                chartForCandle.ChartAreas[0].AxisX.ScaleView.Scroll(chartForCandle.ChartAreas[0].AxisX.Minimum);
+                hourTimeFrame = false;
+                button1.Enabled = true;
+            }
+        }
+
+        private void textBox2_KeyUp(object sender, KeyEventArgs e)
+        {
+            textBox3.Text = GetOneLotPrice(bars.Name).ToString();
         }
     }
 }

@@ -13,6 +13,7 @@ using System.Windows.Forms;
 using LevelStrategy.Model;
 using System.Runtime.InteropServices;
 using LevelStrategy.DAL;
+using LevelStrategy.BL;
 
 namespace LevelStrategy
 {
@@ -71,10 +72,20 @@ namespace LevelStrategy
                 TimeFrame frame = Enum.GetValues(typeof(TimeFrame)).Cast<TimeFrame>().First(x => x.ToString() == cbTimeFrame.Text);
                 string classCod = cbClass.Text;
                 string security = cbSecurity.Text;
-                Task.Run(() =>
+                if(button1.Tag is FindPattern)
                 {
-                    data.SetQUIKCommandDataObject(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, DataReception.GetCommandStringCb(classCod, security, frame), "GetCandle");
-                });
+                    Task.Run(() =>
+                    {
+                        data.SetQUIKCommandDataObject(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, DataReception.GetCommandStringCb(classCod, security, frame), "GetCandle", 0, (FindPattern)button1.Tag);
+                    });
+                }
+                else
+                {
+                    Task.Run(() =>
+                    {
+                        data.SetQUIKCommandDataObject(data.SW_Command, data.SR_FlagCommand, data.SW_FlagCommand, DataReception.GetCommandStringCb(classCod, security, frame), "GetCandle", button1.Tag != null ? (int)button1.Tag : 0);
+                    });
+                }
                 listSecurity.Text += cbSecurity.Text + "\n";
                 listSecurity.AppendText(Environment.NewLine);
                 cbClass.Text = String.Empty;
@@ -188,25 +199,33 @@ namespace LevelStrategy
         }
 
         private List<ApplicationItem> listItem;
+        private List<ApplicationItem> listItemTicks;
 
         private void button2_Click(object sender, EventArgs e)
         {
             if (listItem == null)
             {
                 listItem = new List<ApplicationItem>();
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.BRF8, TimeFrame.INTERVAL_M15));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.EuZ7, TimeFrame.INTERVAL_M15));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.GDZ7, TimeFrame.INTERVAL_M15));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.GZZ7, TimeFrame.INTERVAL_M5));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.RIZ7, TimeFrame.INTERVAL_M15));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.SRZ7, TimeFrame.INTERVAL_M15));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.SiZ7, TimeFrame.INTERVAL_M15));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.SBER, TimeFrame.INTERVAL_M5));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.GAZP, TimeFrame.INTERVAL_M5));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.LKOH, TimeFrame.INTERVAL_M5));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.MOEX, TimeFrame.INTERVAL_M5));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.ROSN, TimeFrame.INTERVAL_M5));
-                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.GMKN, TimeFrame.INTERVAL_M5));
+                //listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.BRF8, TimeFrame.INTERVAL_M15,13));
+                //listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.EuZ7, TimeFrame.INTERVAL_M15, 13));
+                //listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.GDZ7, TimeFrame.INTERVAL_M15, 13));
+                //listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.RIZ7, TimeFrame.INTERVAL_M15, 13));
+                //listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.SiZ7, TimeFrame.INTERVAL_M15, 13));
+
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.SBER, TimeFrame.INTERVAL_M5,21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.GAZP, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.LKOH, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.MOEX, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.ROSN, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.GMKN, TimeFrame.INTERVAL_M5, 21));
+
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.ALRS, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.MAGN, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.NLMK, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.SNGS, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.CHMF, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.NVTK, TimeFrame.INTERVAL_M5, 21));
+                listItem.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.TQBR, global::LevelStrategy.DAL.Security.MGNT, TimeFrame.INTERVAL_M5, 21));
                 AddAllCb(listItem);
             }
 
@@ -219,6 +238,18 @@ namespace LevelStrategy
                 cbClass.Text = i.classCod;
                 cbSecurity.Text = i.security;
                 cbTimeFrame.Text = i.timeFrame.ToString();
+                button1.Tag = i.fractalParam;
+                this.button1_Click(this, EventArgs.Empty);
+            }
+        }
+        private void AddAllCbForTicks(List<ApplicationItem> listApp)
+        {
+            foreach (ApplicationItem i in listApp)
+            {
+                cbClass.Text = i.classCod;
+                cbSecurity.Text = i.security;
+                cbTimeFrame.Text = i.timeFrame.ToString();
+                button1.Tag = i.findPattern;
                 this.button1_Click(this, EventArgs.Empty);
             }
         }
@@ -300,6 +331,22 @@ namespace LevelStrategy
             }
             mtx.ReleaseMutex();
             textBox1.Text = String.Empty;
+        }
+        static void EventSignal(object e, string str)
+        {
+            Task.Run(() => { MessageBox.Show(String.Format("{0} - {1}", str, DateTime.Now)); });
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            if(listItemTicks == null)
+            {
+                listItemTicks = new List<ApplicationItem>();
+
+                listItemTicks.Add(new ApplicationItem(global::LevelStrategy.DAL.ClassCod.SPBFUT, global::LevelStrategy.DAL.Futures.GDH8, TimeFrame.INTERVAL_TICK, 0, new FindPattern(EventSignal, 25000, 4000, 9200, 5000, 1900, "GOLD")));
+                
+                AddAllCbForTicks(listItemTicks);
+            }
         }
     }
 }
